@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Novedades GD 5 Neuquén</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
 <style>
   :root {
     --navy: #14314f;
@@ -533,26 +533,68 @@
       'Otros'
     ];
 
+    const COLOR_NAVY = 'FF14314F';
+    const COLOR_GOLD = 'FFE8A530';
+    const COLOR_ALTA = 'FFF6E2DD';
+    const COLOR_MEDIA = 'FFFAF0DC';
+    const COLOR_BAJA = 'FFE1EFE7';
+
+    function estiloEncabezado(cell) {
+      cell.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLOR_NAVY } };
+      cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+      cell.border = { bottom: { style: 'thin', color: { argb: 'FFCCCCCC' } } };
+    }
+
+    function estiloCeldaTexto(cell) {
+      cell.alignment = { vertical: 'top', horizontal: 'left', wrapText: true };
+      cell.border = { bottom: { style: 'hair', color: { argb: 'FFE0E0E0' } } };
+    }
+
     try {
-      const wb = XLSX.utils.book_new();
+      const wb = new ExcelJS.Workbook();
+      wb.creator = 'Dashboard Novedades GD5';
+      wb.created = new Date();
 
       // --- Hoja 1: Detalle ---
-      const filasDetalle = filtrados.map(d => ({
-        Fecha: d.Fecha ? new Date(d.Fecha).toLocaleDateString('es-AR') : '',
-        Semana: d.Semana || '',
-        GD: d.GD || '',
-        Dependencia: d.Dependencia || '',
-        Categoria: d.Categoria || '',
-        Prioridad: d.Prioridad || '',
-        Resumen: d.Resumen || '',
-        Remitente: d.Remitente || '',
-        Asunto: d.Asunto || '',
-        TieneAdjunto: d.TieneAdjunto || ''
-      }));
-      const wsDetalle = XLSX.utils.json_to_sheet(filasDetalle);
-      XLSX.utils.book_append_sheet(wb, wsDetalle, 'Detalle');
+      const wsDetalle = wb.addWorksheet('Detalle', { views: [{ state: 'frozen', ySplit: 1 }] });
+      wsDetalle.columns = [
+        { header: 'Fecha', key: 'fecha', width: 12 },
+        { header: 'Semana', key: 'semana', width: 22 },
+        { header: 'GD', key: 'gd', width: 8 },
+        { header: 'Dependencia', key: 'dependencia', width: 22 },
+        { header: 'Categoría', key: 'categoria', width: 28 },
+        { header: 'Prioridad', key: 'prioridad', width: 11 },
+        { header: 'Resumen', key: 'resumen', width: 55 },
+        { header: 'Remitente', key: 'remitente', width: 26 },
+        { header: 'Asunto', key: 'asunto', width: 30 },
+        { header: 'Adjunto', key: 'adjunto', width: 10 }
+      ];
+      wsDetalle.getRow(1).eachCell(c => estiloEncabezado(c));
+      wsDetalle.autoFilter = { from: 'A1', to: 'J1' };
 
-      // --- Hoja 2: Resumen Ejecutivo (se genera fresco al exportar) ---
+      filtrados.forEach(d => {
+        const fila = wsDetalle.addRow({
+          fecha: d.Fecha ? new Date(d.Fecha).toLocaleDateString('es-AR') : '',
+          semana: d.Semana || '',
+          gd: d.GD || '',
+          dependencia: d.Dependencia || '',
+          categoria: d.Categoria || '',
+          prioridad: d.Prioridad || '',
+          resumen: d.Resumen || '',
+          remitente: d.Remitente || '',
+          asunto: d.Asunto || '',
+          adjunto: d.TieneAdjunto || ''
+        });
+        fila.height = 42;
+        fila.eachCell(c => estiloCeldaTexto(c));
+        const colorFondo = d.Prioridad === 'alta' ? COLOR_ALTA : d.Prioridad === 'baja' ? COLOR_BAJA : COLOR_MEDIA;
+        fila.getCell('prioridad').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colorFondo } };
+        fila.getCell('prioridad').font = { bold: true };
+        fila.getCell('prioridad').alignment = { horizontal: 'center', vertical: 'middle' };
+      });
+
+      // --- Hoja 2: Resumen Ejecutivo ---
       let textoResumen = 'No se pudo generar el resumen ejecutivo.';
       try {
         const url = getUrlGuardada();
@@ -563,34 +605,56 @@
         }
       } catch (e) { /* si falla, se exporta igual con el mensaje por defecto */ }
 
-      const wsResumen = XLSX.utils.aoa_to_sheet(
-        textoResumen.split('\n').map(linea => [linea])
-      );
-      wsResumen['!cols'] = [{ wch: 100 }];
-      XLSX.utils.book_append_sheet(wb, wsResumen, 'Resumen Ejecutivo');
+      const wsResumen = wb.addWorksheet('Resumen Ejecutivo');
+      wsResumen.columns = [{ width: 110 }];
+      const filaTitulo = wsResumen.addRow(['Resumen ejecutivo — generado por IA']);
+      filaTitulo.getCell(1).font = { bold: true, size: 13, color: { argb: 'FF14314F' } };
+      wsResumen.addRow([]);
+      textoResumen.split('\n').forEach(linea => {
+        const f = wsResumen.addRow([linea]);
+        f.getCell(1).alignment = { wrapText: true, vertical: 'top' };
+        if (/^[A-ZÁÉÍÓÚ ]{4,}:?$/.test(linea.trim())) {
+          f.getCell(1).font = { bold: true, color: { argb: 'FF14314F' } };
+        }
+      });
 
-      // --- Hoja 3: Formato Institucional (matriz por semana, fila Divisional Neuquén) ---
+      // --- Hoja 3: Formato Institucional ---
       const semanas = [...new Set(filtrados.map(d => d.Semana).filter(Boolean))];
-      const filasInstitucional = [['GERENCIA', ...CATEGORIAS_OFICIALES]];
+      const wsInstitucional = wb.addWorksheet('Formato Institucional', { views: [{ state: 'frozen', xSplit: 1, ySplit: 1 }] });
+      wsInstitucional.columns = [
+        { header: 'GERENCIA', key: 'gerencia', width: 30 },
+        ...CATEGORIAS_OFICIALES.map(c => ({ header: c, key: c, width: 32 }))
+      ];
+      wsInstitucional.getRow(1).eachCell(c => estiloEncabezado(c));
+      wsInstitucional.getRow(1).height = 45;
 
       semanas.forEach(sem => {
-        const fila = ['DIVISIONAL NEUQUEN (' + sem + ')'];
+        const filaObj = { gerencia: 'DIVISIONAL NEUQUEN (' + sem + ')' };
         CATEGORIAS_OFICIALES.forEach(catOficial => {
           const items = filtrados
             .filter(d => d.Semana === sem && d.Categoria === catOficial)
             .map(d => d.Resumen)
             .filter(Boolean);
-          fila.push(items.join(' | '));
+          filaObj[catOficial] = items.join('\n• ');
         });
-        filasInstitucional.push(fila);
+        const fila = wsInstitucional.addRow(filaObj);
+        fila.height = 90;
+        fila.eachCell(c => estiloCeldaTexto(c));
+        fila.getCell('gerencia').font = { bold: true };
+        fila.getCell('gerencia').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF5F4F1' } };
       });
 
-      const wsInstitucional = XLSX.utils.aoa_to_sheet(filasInstitucional);
-      wsInstitucional['!cols'] = [{ wch: 25 }, ...CATEGORIAS_OFICIALES.map(() => ({ wch: 30 }))];
-      XLSX.utils.book_append_sheet(wb, wsInstitucional, 'Formato Institucional');
-
+      const buffer = await wb.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/octet-stream' });
+      const urlDescarga = URL.createObjectURL(blob);
+      const a = document.createElement('a');
       const fechaArchivo = new Date().toISOString().slice(0, 10);
-      XLSX.writeFile(wb, `novedades_gd5_${fechaArchivo}.xlsx`);
+      a.href = urlDescarga;
+      a.download = `novedades_gd5_${fechaArchivo}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(urlDescarga);
     } finally {
       btn.disabled = false;
       btn.textContent = '⬇️ Exportar a Excel';
