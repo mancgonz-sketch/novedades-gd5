@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novedades GD 5 Neuquén</title>
+<style>
+  :root {
+    --navy: #14314f;
+    --navy-deep: #0c2138;
+    --gold: #e8a530;
+    --paper: #f5f4f1;
+    --ink: #1f2a33;
+    --muted: #6b7680;
+    --line: #dcd8d0;
+    --alta: #b3412e;
+    --media: #c98a1f;
+    --baja: #3d7a5c;
+    --card: #ffffff;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+  }
+  header {
+    background: var(--navy);
+    color: #fff;
+    padding: 28px 32px 24px;
+  }
+  header h1 {
+    margin: 0 0 4px;
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+  header .sub {
+    color: #b9c6d4;
+    font-size: 0.85rem;
+  }
+  .config-bar {
+    display: none;
+    background: var(--navy-deep);
+    padding: 10px 32px;
+    color: #cfd8e0;
+    font-size: 0.8rem;
+  }
+  .config-bar.visible { display: block; }
+  .config-bar input {
+    background: #fff2;
+    border: 1px solid #ffffff33;
+    color: #fff;
+    border-radius: 4px;
+    padding: 4px 8px;
+    width: 340px;
+    font-size: 0.8rem;
+  }
+  main { max-width: 980px; margin: 0 auto; padding: 24px 32px 60px; }
+
+  .summary-row {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+  .summary-card {
+    flex: 1;
+    min-width: 120px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 14px 16px;
+  }
+  .summary-card .num { font-size: 1.6rem; font-weight: 700; }
+  .summary-card .label { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .summary-card.alta .num { color: var(--alta); }
+  .summary-card.media .num { color: var(--media); }
+  .summary-card.baja .num { color: var(--baja); }
+
+  .filters {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+  }
+  .filters select, .filters input[type=text] {
+    padding: 7px 10px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: #fff;
+    font-size: 0.85rem;
+    color: var(--ink);
+  }
+  .filters input[type=text] { flex: 1; min-width: 160px; }
+
+  .novedad {
+    display: flex;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    margin-bottom: 10px;
+    overflow: hidden;
+  }
+  .novedad .bar { width: 5px; flex-shrink: 0; }
+  .novedad.alta .bar { background: var(--alta); }
+  .novedad.media .bar { background: var(--media); }
+  .novedad.baja .bar { background: var(--baja); }
+  .novedad .body { padding: 14px 18px; flex: 1; }
+  .novedad .top-line {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 6px;
+    flex-wrap: wrap;
+  }
+  .novedad .dependencia { font-weight: 700; font-size: 0.95rem; }
+  .novedad .meta { font-size: 0.75rem; color: var(--muted); }
+  .novedad .resumen { font-size: 0.88rem; line-height: 1.4; color: var(--ink); margin-bottom: 8px; }
+  .novedad .tags { display: flex; gap: 8px; align-items: center; font-size: 0.72rem; }
+  .tag {
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    color: var(--muted);
+    text-transform: capitalize;
+  }
+  .novedad a.link {
+    font-size: 0.75rem;
+    color: var(--navy);
+    text-decoration: none;
+    border-bottom: 1px solid var(--gold);
+  }
+
+  .empty, .loading {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--muted);
+  }
+  .adjunto-icon { color: var(--gold); font-size: 0.9rem; }
+
+  .panel-manual {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 16px 18px;
+    margin-bottom: 22px;
+  }
+  .panel-manual .titulo {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .panel-manual .fila {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+  }
+  .panel-manual input[type=text] {
+    flex: 1;
+    min-width: 160px;
+    padding: 8px 10px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    font-size: 0.85rem;
+  }
+  .panel-manual textarea {
+    width: 100%;
+    min-height: 70px;
+    padding: 10px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-family: inherit;
+    resize: vertical;
+    margin-bottom: 10px;
+  }
+  .panel-manual button {
+    background: var(--navy);
+    color: #fff;
+    border: none;
+    padding: 9px 18px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .panel-manual button:disabled { opacity: 0.6; cursor: default; }
+  .panel-manual .estado {
+    font-size: 0.78rem;
+    margin-top: 8px;
+  }
+  .panel-manual .estado.ok { color: var(--baja); }
+  .panel-manual .estado.error { color: var(--alta); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Novedades semanales — GD 5 Neuquén</h1>
+  <div class="sub" id="statusLine">Cargando...</div>
+</header>
+
+<div class="config-bar" id="configBar">
+  URL del Web App de Apps Script:
+  <input type="text" id="webAppUrl" placeholder="https://script.google.com/macros/s/AKfycb.../exec">
+  <button onclick="guardarUrl()">Guardar</button>
+</div>
+
+<main>
+  <div class="panel-manual">
+    <div class="titulo">✏️ Cargar novedad manual</div>
+    <div class="fila">
+      <input type="text" id="manualGD" placeholder="GD (ej: GD5)" style="max-width:100px;">
+      <input type="text" id="manualDependencia" placeholder="Dependencia (opcional, ej: Cipolletti)">
+    </div>
+    <textarea id="manualTexto" placeholder="Escribí la novedad: qué pasó, dónde, y cualquier dato relevante que recuerdes..."></textarea>
+    <button id="btnCargarManual" onclick="cargarManual()">Cargar y clasificar</button>
+    <div class="estado" id="estadoManual"></div>
+  </div>
+
+  <div class="summary-row" id="summaryRow"></div>
+
+  <div class="filters">
+    <select id="filtroGD"><option value="">Todas las GD</option></select>
+    <select id="filtroCategoria"><option value="">Todas las categorías</option></select>
+    <select id="filtroPrioridad">
+      <option value="">Toda prioridad</option>
+      <option value="alta">Alta</option>
+      <option value="media">Media</option>
+      <option value="baja">Baja</option>
+    </select>
+    <input type="text" id="filtroTexto" placeholder="Buscar por dependencia o texto...">
+  </div>
+
+  <div id="lista"></div>
+</main>
+
+<script>
+  const PARAM_KEY = 'gd_novedades_webapp_url';
+  let datos = [];
+
+  function getUrlGuardada() {
+    try { return localStorage.getItem(PARAM_KEY) || ''; } catch(e) { return ''; }
+  }
+  function guardarUrl() {
+    const val = document.getElementById('webAppUrl').value.trim();
+    try { localStorage.setItem(PARAM_KEY, val); } catch(e) {}
+    document.getElementById('configBar').classList.remove('visible');
+    cargarDatos();
+  }
+
+  function ordenPrioridad(p) {
+    return p === 'alta' ? 0 : p === 'media' ? 1 : 2;
+  }
+
+  async function cargarDatos() {
+    const url = getUrlGuardada();
+    const lista = document.getElementById('lista');
+    const status = document.getElementById('statusLine');
+
+    if (!url) {
+      document.getElementById('configBar').classList.add('visible');
+      status.textContent = 'Configurá la URL del Web App para empezar.';
+      lista.innerHTML = '<div class="empty">Sin datos todavía. Cargá la URL de arriba.</div>';
+      return;
+    }
+
+    status.textContent = 'Actualizando...';
+    lista.innerHTML = '<div class="loading">Cargando novedades...</div>';
+
+    try {
+      const resp = await fetch(url);
+      datos = await resp.json();
+      datos.sort((a, b) => ordenPrioridad(a.Prioridad) - ordenPrioridad(b.Prioridad));
+      poblarFiltros();
+      render();
+      const ahora = new Date().toLocaleString('es-AR');
+      status.textContent = datos.length + ' novedades · actualizado ' + ahora;
+    } catch (e) {
+      status.textContent = 'Error al cargar. Revisá la URL del Web App.';
+      lista.innerHTML = '<div class="empty">No se pudo conectar con la planilla.</div>';
+    }
+  }
+
+  function poblarFiltros() {
+    const cats = [...new Set(datos.map(d => d.Categoria).filter(Boolean))];
+    const sel = document.getElementById('filtroCategoria');
+    sel.innerHTML = '<option value="">Todas las categorías</option>' +
+      cats.map(c => `<option value="${c}">${c}</option>`).join('');
+
+    const gds = [...new Set(datos.map(d => d.GD).filter(Boolean))].sort();
+    const selGD = document.getElementById('filtroGD');
+    selGD.innerHTML = '<option value="">Todas las GD</option>' +
+      gds.map(g => `<option value="${g}">${g}</option>`).join('');
+  }
+
+  function render() {
+    const cat = document.getElementById('filtroCategoria').value;
+    const prio = document.getElementById('filtroPrioridad').value;
+    const gdFiltro = document.getElementById('filtroGD').value;
+    const texto = document.getElementById('filtroTexto').value.toLowerCase();
+
+    const filtrados = datos.filter(d => {
+      if (cat && d.Categoria !== cat) return false;
+      if (prio && d.Prioridad !== prio) return false;
+      if (gdFiltro && d.GD !== gdFiltro) return false;
+      if (texto) {
+        const blob = (d.Dependencia + ' ' + d.Resumen + ' ' + d.Asunto).toLowerCase();
+        if (!blob.includes(texto)) return false;
+      }
+      return true;
+    });
+
+    // resumen counts sobre el total (no filtrado) para el panel superior
+    const counts = { alta: 0, media: 0, baja: 0 };
+    datos.forEach(d => { if (counts[d.Prioridad] !== undefined) counts[d.Prioridad]++; });
+
+    document.getElementById('summaryRow').innerHTML = `
+      <div class="summary-card"><div class="num">${datos.length}</div><div class="label">Total</div></div>
+      <div class="summary-card alta"><div class="num">${counts.alta}</div><div class="label">Alta prioridad</div></div>
+      <div class="summary-card media"><div class="num">${counts.media}</div><div class="label">Media</div></div>
+      <div class="summary-card baja"><div class="num">${counts.baja}</div><div class="label">Baja</div></div>
+    `;
+
+    const lista = document.getElementById('lista');
+    if (filtrados.length === 0) {
+      lista.innerHTML = '<div class="empty">No hay novedades que coincidan con el filtro.</div>';
+      return;
+    }
+
+    lista.innerHTML = filtrados.map(d => {
+      const fecha = d.Fecha ? new Date(d.Fecha).toLocaleDateString('es-AR') : '';
+      const adjunto = d.TieneAdjunto === 'Sí' ? '<span class="adjunto-icon">📎</span>' : '';
+      return `
+        <div class="novedad ${d.Prioridad || 'media'}">
+          <div class="bar"></div>
+          <div class="body">
+            <div class="top-line">
+              <span class="dependencia">${d.Dependencia || 'Sin identificar'}</span>
+              <span class="meta">${fecha} · ${d.Remitente || ''}</span>
+            </div>
+            <div class="resumen">${d.Resumen || ''}</div>
+            <div class="tags">
+              <span class="tag">${d.Categoria || 'otro'}</span>
+              <span class="tag">${d.Prioridad || 'media'}</span>
+              ${d.GD ? '<span class="tag">' + d.GD + '</span>' : ''}
+              ${adjunto}
+              ${d.LinkGmail ? '<a class="link" href="' + d.LinkGmail + '" target="_blank">Ver correo original →</a>' : ''}
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  async function cargarManual() {
+    const url = getUrlGuardada();
+    const textoEl = document.getElementById('manualTexto');
+    const depEl = document.getElementById('manualDependencia');
+    const gdEl = document.getElementById('manualGD');
+    const btn = document.getElementById('btnCargarManual');
+    const estado = document.getElementById('estadoManual');
+
+    const texto = textoEl.value.trim();
+    if (!texto) {
+      estado.textContent = 'Escribí algo antes de cargar.';
+      estado.className = 'estado error';
+      return;
+    }
+    if (!url) {
+      estado.textContent = 'Primero configurá la URL del Web App.';
+      estado.className = 'estado error';
+      return;
+    }
+
+    btn.disabled = true;
+    estado.textContent = 'Clasificando con IA...';
+    estado.className = 'estado';
+
+    try {
+      // Se manda como text/plain para evitar el preflight CORS que Apps Script no maneja bien
+      const resp = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({
+          texto: texto,
+          dependencia: depEl.value.trim(),
+          gd: gdEl.value.trim(),
+          autor: 'Carga manual - Gonzalo'
+        })
+      });
+      const data = await resp.json();
+
+      if (data.ok) {
+        estado.textContent = `Cargada: ${data.resultado.categoria} / prioridad ${data.resultado.prioridad}.`;
+        estado.className = 'estado ok';
+        textoEl.value = '';
+        depEl.value = '';
+        gdEl.value = '';
+        cargarDatos();
+      } else {
+        estado.textContent = 'Error: ' + (data.error || 'no se pudo procesar.');
+        estado.className = 'estado error';
+      }
+    } catch (e) {
+      estado.textContent = 'Error de conexión al cargar la novedad.';
+      estado.className = 'estado error';
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  document.getElementById('filtroGD').addEventListener('change', render);
+  document.getElementById('filtroCategoria').addEventListener('change', render);
+  document.getElementById('filtroPrioridad').addEventListener('change', render);
+  document.getElementById('filtroTexto').addEventListener('input', render);
+
+  const urlGuardada = getUrlGuardada();
+  if (urlGuardada) document.getElementById('webAppUrl').value = urlGuardada;
+  cargarDatos();
+</script>
+
+</body>
+</html>
