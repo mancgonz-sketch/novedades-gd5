@@ -496,7 +496,7 @@
     }
   }
 
-  function exportarExcel() {
+  async function exportarExcel() {
     const cat = document.getElementById('filtroCategoria').value;
     const prio = document.getElementById('filtroPrioridad').value;
     const gdFiltro = document.getElementById('filtroGD').value;
@@ -518,24 +518,83 @@
       return;
     }
 
-    const filasExport = filtrados.map(d => ({
-      Fecha: d.Fecha ? new Date(d.Fecha).toLocaleDateString('es-AR') : '',
-      Semana: d.Semana || '',
-      GD: d.GD || '',
-      Dependencia: d.Dependencia || '',
-      Categoria: d.Categoria || '',
-      Prioridad: d.Prioridad || '',
-      Resumen: d.Resumen || '',
-      Remitente: d.Remitente || '',
-      Asunto: d.Asunto || '',
-      TieneAdjunto: d.TieneAdjunto || ''
-    }));
+    const btn = document.getElementById('btnExportar');
+    btn.disabled = true;
+    btn.textContent = 'Generando...';
 
-    const ws = XLSX.utils.json_to_sheet(filasExport);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Novedades');
-    const fechaArchivo = new Date().toISOString().slice(0, 10);
-    XLSX.writeFile(wb, `novedades_gd5_${fechaArchivo}.xlsx`);
+    const CATEGORIAS_OFICIALES = [
+      'Nuevas obras / cambios de imagen',
+      'Inconvenientes',
+      'Novedades concesionarios',
+      'Avance de proyectos con transformación',
+      'Novedades regionales con YPF',
+      'Próximo Eventos a realizar',
+      'Temas gubernamentales o Autoridad de aplicación',
+      'Otros'
+    ];
+
+    try {
+      const wb = XLSX.utils.book_new();
+
+      // --- Hoja 1: Detalle ---
+      const filasDetalle = filtrados.map(d => ({
+        Fecha: d.Fecha ? new Date(d.Fecha).toLocaleDateString('es-AR') : '',
+        Semana: d.Semana || '',
+        GD: d.GD || '',
+        Dependencia: d.Dependencia || '',
+        Categoria: d.Categoria || '',
+        Prioridad: d.Prioridad || '',
+        Resumen: d.Resumen || '',
+        Remitente: d.Remitente || '',
+        Asunto: d.Asunto || '',
+        TieneAdjunto: d.TieneAdjunto || ''
+      }));
+      const wsDetalle = XLSX.utils.json_to_sheet(filasDetalle);
+      XLSX.utils.book_append_sheet(wb, wsDetalle, 'Detalle');
+
+      // --- Hoja 2: Resumen Ejecutivo (se genera fresco al exportar) ---
+      let textoResumen = 'No se pudo generar el resumen ejecutivo.';
+      try {
+        const url = getUrlGuardada();
+        if (url) {
+          const resp = await fetch(url + '?accion=resumenTemas');
+          const data = await resp.json();
+          textoResumen = data.resumen || textoResumen;
+        }
+      } catch (e) { /* si falla, se exporta igual con el mensaje por defecto */ }
+
+      const wsResumen = XLSX.utils.aoa_to_sheet(
+        textoResumen.split('\n').map(linea => [linea])
+      );
+      wsResumen['!cols'] = [{ wch: 100 }];
+      XLSX.utils.book_append_sheet(wb, wsResumen, 'Resumen Ejecutivo');
+
+      // --- Hoja 3: Formato Institucional (matriz por semana, fila Divisional Neuquén) ---
+      const semanas = [...new Set(filtrados.map(d => d.Semana).filter(Boolean))];
+      const filasInstitucional = [['GERENCIA', ...CATEGORIAS_OFICIALES]];
+
+      semanas.forEach(sem => {
+        const fila = ['DIVISIONAL NEUQUEN (' + sem + ')'];
+        CATEGORIAS_OFICIALES.forEach(catOficial => {
+          const items = filtrados
+            .filter(d => d.Semana === sem && d.Categoria === catOficial)
+            .map(d => d.Resumen)
+            .filter(Boolean);
+          fila.push(items.join(' | '));
+        });
+        filasInstitucional.push(fila);
+      });
+
+      const wsInstitucional = XLSX.utils.aoa_to_sheet(filasInstitucional);
+      wsInstitucional['!cols'] = [{ wch: 25 }, ...CATEGORIAS_OFICIALES.map(() => ({ wch: 30 }))];
+      XLSX.utils.book_append_sheet(wb, wsInstitucional, 'Formato Institucional');
+
+      const fechaArchivo = new Date().toISOString().slice(0, 10);
+      XLSX.writeFile(wb, `novedades_gd5_${fechaArchivo}.xlsx`);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '⬇️ Exportar a Excel';
+    }
   }
 
   document.getElementById('filtroGD').addEventListener('change', render);
