@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Novedades GD 5 Neuquén</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
   :root {
     --navy: #14314f;
@@ -200,6 +201,47 @@
   }
   .panel-manual .estado.ok { color: var(--baja); }
   .panel-manual .estado.error { color: var(--alta); }
+
+  .acciones-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .btn-secundario {
+    background: #fff;
+    color: var(--navy);
+    border: 1px solid var(--navy);
+    padding: 8px 14px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .btn-secundario:disabled { opacity: 0.6; cursor: default; }
+
+  .panel-temas {
+    background: #fdf8ee;
+    border: 1px solid var(--gold);
+    border-radius: 8px;
+    padding: 16px 18px;
+    margin-bottom: 20px;
+    display: none;
+  }
+  .panel-temas.visible { display: block; }
+  .panel-temas .titulo {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 10px;
+  }
+  .panel-temas .contenido {
+    font-size: 0.85rem;
+    line-height: 1.6;
+    white-space: pre-wrap;
+  }
 </style>
 </head>
 <body>
@@ -228,6 +270,16 @@
   </div>
 
   <div class="summary-row" id="summaryRow"></div>
+
+  <div class="acciones-row">
+    <button class="btn-secundario" id="btnTemas" onclick="generarTemas()">🔎 Ver temas recurrentes</button>
+    <button class="btn-secundario" id="btnExportar" onclick="exportarExcel()">⬇️ Exportar a Excel</button>
+  </div>
+
+  <div class="panel-temas" id="panelTemas">
+    <div class="titulo">Temas recurrentes entre semanas</div>
+    <div class="contenido" id="contenidoTemas"></div>
+  </div>
 
   <div class="filters">
     <select id="filtroGD"><option value="">Todas las GD</option></select>
@@ -346,7 +398,7 @@
           <div class="body">
             <div class="top-line">
               <span class="dependencia">${d.Dependencia || 'Sin identificar'}</span>
-              <span class="meta">${fecha} · ${d.Remitente || ''}</span>
+              <span class="meta">${fecha} · ${d.Semana || ''} · ${d.Remitente || ''}</span>
             </div>
             <div class="resumen">${d.Resumen || ''}</div>
             <div class="tags">
@@ -417,6 +469,73 @@
     } finally {
       btn.disabled = false;
     }
+  }
+
+  async function generarTemas() {
+    const url = getUrlGuardada();
+    const btn = document.getElementById('btnTemas');
+    const panel = document.getElementById('panelTemas');
+    const contenido = document.getElementById('contenidoTemas');
+
+    if (!url) return;
+
+    btn.disabled = true;
+    btn.textContent = 'Analizando semanas...';
+    panel.classList.add('visible');
+    contenido.textContent = 'Buscando temas que se repiten entre semanas...';
+
+    try {
+      const resp = await fetch(url + '?accion=resumenTemas');
+      const data = await resp.json();
+      contenido.textContent = data.resumen || 'No se pudo generar el resumen.';
+    } catch (e) {
+      contenido.textContent = 'Error al generar el resumen de temas.';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '🔎 Ver temas recurrentes';
+    }
+  }
+
+  function exportarExcel() {
+    const cat = document.getElementById('filtroCategoria').value;
+    const prio = document.getElementById('filtroPrioridad').value;
+    const gdFiltro = document.getElementById('filtroGD').value;
+    const texto = document.getElementById('filtroTexto').value.toLowerCase();
+
+    const filtrados = datos.filter(d => {
+      if (cat && d.Categoria !== cat) return false;
+      if (prio && d.Prioridad !== prio) return false;
+      if (gdFiltro && d.GD !== gdFiltro) return false;
+      if (texto) {
+        const blob = (d.Dependencia + ' ' + d.Resumen + ' ' + d.Asunto).toLowerCase();
+        if (!blob.includes(texto)) return false;
+      }
+      return true;
+    });
+
+    if (filtrados.length === 0) {
+      alert('No hay novedades para exportar con el filtro actual.');
+      return;
+    }
+
+    const filasExport = filtrados.map(d => ({
+      Fecha: d.Fecha ? new Date(d.Fecha).toLocaleDateString('es-AR') : '',
+      Semana: d.Semana || '',
+      GD: d.GD || '',
+      Dependencia: d.Dependencia || '',
+      Categoria: d.Categoria || '',
+      Prioridad: d.Prioridad || '',
+      Resumen: d.Resumen || '',
+      Remitente: d.Remitente || '',
+      Asunto: d.Asunto || '',
+      TieneAdjunto: d.TieneAdjunto || ''
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(filasExport);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Novedades');
+    const fechaArchivo = new Date().toISOString().slice(0, 10);
+    XLSX.writeFile(wb, `novedades_gd5_${fechaArchivo}.xlsx`);
   }
 
   document.getElementById('filtroGD').addEventListener('change', render);
