@@ -272,12 +272,12 @@
   <div class="summary-row" id="summaryRow"></div>
 
   <div class="acciones-row">
-    <button class="btn-secundario" id="btnTemas" onclick="generarTemas()">🔎 Ver temas recurrentes</button>
+    <button class="btn-secundario" id="btnTemas" onclick="generarTemas()">🔎 Ver resumen ejecutivo</button>
     <button class="btn-secundario" id="btnExportar" onclick="exportarExcel()">⬇️ Exportar a Excel</button>
   </div>
 
   <div class="panel-temas" id="panelTemas">
-    <div class="titulo">Temas recurrentes entre semanas</div>
+    <div class="titulo">Resumen ejecutivo (por categoría + temas recurrentes)</div>
     <div class="contenido" id="contenidoTemas"></div>
   </div>
 
@@ -492,7 +492,7 @@
       contenido.textContent = 'Error al generar el resumen de temas.';
     } finally {
       btn.disabled = false;
-      btn.textContent = '🔎 Ver temas recurrentes';
+      btn.textContent = '🔎 Ver resumen ejecutivo';
     }
   }
 
