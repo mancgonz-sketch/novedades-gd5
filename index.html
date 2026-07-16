@@ -453,7 +453,13 @@
       const data = await resp.json();
 
       if (data.ok) {
-        estado.textContent = `Cargada: ${data.resultado.categoria} / prioridad ${data.resultado.prioridad}.`;
+        const n = data.cantidad || 1;
+        if (n === 1) {
+          estado.textContent = `Cargada: ${data.resultados[0].categoria} / prioridad ${data.resultados[0].prioridad}.`;
+        } else {
+          estado.textContent = `Se detectaron ${n} temas distintos y se cargaron por separado: ` +
+            data.resultados.map(r => r.categoria).join(', ');
+        }
         estado.className = 'estado ok';
         textoEl.value = '';
         depEl.value = '';
